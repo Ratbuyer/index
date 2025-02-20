@@ -309,7 +309,6 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
         	// set_subsystem_init();
 		}
 		set = set_new(1);
-		std::atomic<int> counter = 0;
 		
 		bg_start(0);
 		// barrier_t barrier;
@@ -407,7 +406,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 					sl_add_old(set, keys[i], 0);
 				} else if (ops[i] == OP_READ) {
 					// concurrent_map.value(keys[i]);
-					counter += sl_contains_old(set, keys[i], 0);
+					sl_contains_old(set, keys[i], 0);
 				} else if (ops[i] == OP_SCAN) {
 					uint64_t sum = 0;
 					// concurrent_map.map_range_length(
@@ -449,10 +448,8 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		}
 		
 		bg_stop();
-		int size = set_size(set, 1);
-		printf("Set size     : %d\n", size);
-		int count = counter.load();
-		printf("Count     : %d\n", count);
+		// int size = set_size(set, 1);
+		// printf("Set size     : %d\n", size);
 	}
 #if LATENCY
 	load_latencies.print_percentiles();
