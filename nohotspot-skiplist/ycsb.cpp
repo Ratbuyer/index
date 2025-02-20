@@ -125,8 +125,8 @@ inline void clflush(char *data, int len, bool front, bool back) {
 }
 } // namespace Dummy
 
-static uint64_t LOAD_SIZE = 100000000;
-static uint64_t RUN_SIZE = 100000000;
+static uint64_t LOAD_SIZE = 10000;
+static uint64_t RUN_SIZE = 10000;
 
 struct ThreadArgs {
 	std::function<void(int, int)> func;
@@ -292,9 +292,6 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 	std::vector<double> run_tpts;
 	
 	struct sl_set *set;
-	ptst_subsystem_init();
-    gc_subsystem_init();
-    set_subsystem_init();
 
 #if LATENCY
 	constexpr int batch_size = 10;
@@ -302,12 +299,10 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 	ThreadSafeVector<uint64_t> latencies;
 #endif
 
-	for (int k = 0; k < 2; k++) {
-		if (k != 0) {
-			// ptst_subsystem_init();
-   			//gc_subsystem_init();
-        	// set_subsystem_init();
-		}
+	for (int k = 0; k < 6; k++) {		
+		ptst_subsystem_init();
+    	gc_subsystem_init();
+     	set_subsystem_init();
 		set = set_new(1);
 		
 		bg_start(0);
