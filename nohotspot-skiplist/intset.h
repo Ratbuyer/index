@@ -29,5 +29,6 @@
 int sl_contains_old(set_t *set, unsigned int key, int transactional);
 int sl_add_old(set_t *set, unsigned int key, int transactional);
 int sl_remove_old(set_t *set, unsigned int key, int transactional);
+int sl_scan_old(set_t *set, unsigned int start_key, int range, int transactional);
 
 #endif /* INTSET_H_ */

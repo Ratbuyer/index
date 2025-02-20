@@ -44,3 +44,9 @@ int sl_remove_old(set_t *set, unsigned int key, int transactional)
         long null = 0L;
 	return sl_delete(&null, set, (sl_key_t) key);
 }
+
+int sl_scan_old(set_t *set, unsigned int start_key, int range, int transactional)
+{
+		long null = 0L;
+		return sl_scan(&null, set, (sl_key_t) start_key, range);
+}
