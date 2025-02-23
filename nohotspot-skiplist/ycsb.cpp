@@ -327,14 +327,12 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		ptst_subsystem_init();
 		gc_subsystem_init();
 		set_subsystem_init();
-
 		set = set_new(1);
+		
+		std::atomic<int> counter = 0;
 
-		TM_STARTUP();
-		// barrier_t barrier;
-		// barrier_init(&barrier, num_thread + 1);
 		{
-			bg_stop();
+			// bg_stop();
 			auto starttime = get_usecs();
 
 #if LATENCY
@@ -354,7 +352,9 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				});
 #else
 			parallel_for(num_thread, 0, LOAD_SIZE, [&](const uint64_t &i) {
-				sl_add_old(set, init_keys[i], 0);
+				if (!sl_add_old(set, init_keys[i], 0)) {
+					counter++;
+				}
 				// concurrent_map.insert({init_keys[i], init_keys[i]});
 			});
 #endif
@@ -500,8 +500,8 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		bg_stop();
 		// int size = set_size(set, 1);
 		// printf("Set size     : %d\n", size);
+		printf("counter: %d\n", counter.load());
 		gc_subsystem_destroy();
-		set_delete(set);
 	}
 #if LATENCY
 	load_latencies.print_percentiles();
