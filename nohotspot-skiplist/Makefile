@@ -7,7 +7,7 @@ BUILDIR=.
 
 .PHONY:	all clean
 
-all:	main
+all:	ycsb
 
 ptst.o: ptst.h 
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/ptst.o ptst.cpp -I$(INCLUDE_DIR)

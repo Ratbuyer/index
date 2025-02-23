@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -9,6 +8,7 @@
 #include <sys/time.h>
 #include <thread>
 #include <vector>
+#include <algorithm>
 
 #include "cxxopts.h"
 #include "timers.h"
@@ -20,8 +20,8 @@
 #include "garbagecoll.h"
 #include "lockfree.h"
 
-#include "background.h"
 #include "intset.h"
+#include "background.h"
 
 using namespace std;
 
@@ -80,14 +80,16 @@ typedef struct barrier {
 	int crossing;
 } barrier_t;
 
-void barrier_init(barrier_t *b, int n) {
+void barrier_init(barrier_t *b, int n)
+{
 	pthread_cond_init(&b->complete, NULL);
 	pthread_mutex_init(&b->mutex, NULL);
 	b->count = n;
 	b->crossing = 0;
 }
 
-void barrier_cross(barrier_t *b) {
+void barrier_cross(barrier_t *b)
+{
 	pthread_mutex_lock(&b->mutex);
 	/* One more thread through */
 	b->crossing++;
@@ -100,30 +102,6 @@ void barrier_cross(barrier_t *b) {
 		b->crossing = 0;
 	}
 	pthread_mutex_unlock(&b->mutex);
-}
-
-int floor_log_2(unsigned int n) {
-	int pos = 0;
-	if (n >= 1 << 16) {
-		n >>= 16;
-		pos += 16;
-	}
-	if (n >= 1 << 8) {
-		n >>= 8;
-		pos += 8;
-	}
-	if (n >= 1 << 4) {
-		n >>= 4;
-		pos += 4;
-	}
-	if (n >= 1 << 2) {
-		n >>= 2;
-		pos += 2;
-	}
-	if (n >= 1 << 1) {
-		pos += 1;
-	}
-	return ((n == 0) ? (-1) : pos);
 }
 
 namespace Dummy {
@@ -223,13 +201,12 @@ double findMedian(vector<double> &vec) {
 	}
 }
 
-template <int node_size = 1024, float p_scale = 0.5>
+template<int node_size = 1024, float p_scale = 0.5>
 void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 						   int num_thread, std::vector<uint64_t> &init_keys,
 						   std::vector<uint64_t> &keys,
 						   std::vector<uint64_t> &range_end,
-						   std::vector<int> &ranges, std::vector<int> &ops,
-						   std::string output_file) {
+						   std::vector<int> &ranges, std::vector<int> &ops, std::string output_file) {
 
 	printf("loading with file: %s\n", init_file.c_str());
 	printf("running with file: %s\n", txn_file.c_str());
@@ -313,8 +290,12 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 	std::vector<double> load_tpts;
 	std::vector<double> run_tpts;
-
+	
 	struct sl_set *set;
+	
+	ptst_subsystem_init();
+   	gc_subsystem_init();
+   	set_subsystem_init();
 
 #if LATENCY
 	constexpr int batch_size = 10;
@@ -323,42 +304,39 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 #endif
 
 	for (int k = 0; k < 6; k++) {
-
-		ptst_subsystem_init();
-		gc_subsystem_init();
-		set_subsystem_init();
-
+			
+		if (k != 0) {
+			ptst_subsystem_init();
+		}
+		
 		set = set_new(1);
-
-		TM_STARTUP();
+		
+		bg_start(0);
 		// barrier_t barrier;
 		// barrier_init(&barrier, num_thread + 1);
 		{
-
+			
 			auto starttime = get_usecs();
-
-#if LATENCY
-			parallel_for(
-				num_thread, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
-					auto load_start = std::chrono::high_resolution_clock::now();
-					for (int j = 0; j < batch_size; j++) {
-						sl_add_old(set, init_keys[i], 0);
-					}
-					auto load_end = std::chrono::high_resolution_clock::now();
-					if (k == 3)
-						load_latencies.push_back(
-							std::chrono::duration_cast<
-								std::chrono::nanoseconds>(load_end - load_start)
-								.count() /
-							batch_size);
-				});
-#else
+			
+			#if LATENCY
+			parallel_for(num_thread, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
+				auto load_start = std::chrono::high_resolution_clock::now();
+				for (int j = 0; j < batch_size; j++) {
+					sl_add_old(set, init_keys[i], 0);
+				}
+				auto load_end = std::chrono::high_resolution_clock::now();
+				if (k == 3) load_latencies.push_back(
+					std::chrono::duration_cast<std::chrono::nanoseconds>(load_end - load_start)
+						.count() /
+					batch_size);
+			});
+			#else
 			parallel_for(num_thread, 0, LOAD_SIZE, [&](const uint64_t &i) {
 				sl_add_old(set, init_keys[i], 0);
 				// concurrent_map.insert({init_keys[i], init_keys[i]});
 			});
-#endif
-
+			#endif
+			
 			auto end = get_usecs();
 			auto duration =
 				end -
@@ -373,38 +351,12 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			// printf("Throughput: load, %f ,ops/us and time %ld in us\n",
 			// (LOAD_SIZE * 1.0) / duration.count(), duration.count());
 
-			bg_stop();
-			
-			printf("levels before rebalance: %d\n", set->head->level);
-			printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
-
-			struct sl_ptst *ptst;
-			struct sl_node *temp;
-
-			ptst = ptst_critical_enter();
-			set->top = inode_new(NULL, NULL, set->head, ptst);
-			ptst_critical_exit(ptst);
-			set->head->level = 1;
-			temp = set->head->next;
-			while (temp) {
-				temp->level = 0;
-				temp = temp->next;
-			}
-
-			// wait till the list is balanced
-			bg_start(0);
-			while (set->head->level < floor_log_2(LOAD_SIZE)) {
-				AO_nop_full();
-			}
-			printf("levels after rebalance: %d\n", set->head->level);
-			bg_stop();
 		}
 		{
 			// Run
 			auto starttime = std::chrono::system_clock::now();
 			// concurrent_map.clear_stats();
-			
-			bg_start(1000000);
+
 
 #if LATENCY
 			parallel_for(
@@ -441,12 +393,10 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 					auto end = std::chrono::high_resolution_clock::now();
 
-					if (k == 3)
-						latencies.push_back(
-							std::chrono::duration_cast<
-								std::chrono::nanoseconds>(end - start)
-								.count() /
-							batch_size);
+					if (k == 3) latencies.push_back(
+						std::chrono::duration_cast<std::chrono::nanoseconds>(
+							end - start)
+							.count() / batch_size);
 				});
 
 #else
@@ -489,26 +439,25 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			if (k != 0)
 				run_tpts.push_back((RUN_SIZE * 1.0) / duration.count());
 
+
 			printf("\tRun, throughput: %f ,ops/us\n",
 				   (RUN_SIZE * 1.0) / duration.count());
-
+			
 #if STATS
 			concurrent_map.get_size_stats();
 #endif
 		}
-
+		
 		bg_stop();
 		// int size = set_size(set, 1);
 		// printf("Set size     : %d\n", size);
-		gc_subsystem_destroy();
-		set_delete(set);
 	}
 #if LATENCY
 	load_latencies.print_percentiles();
 	latencies.print_percentiles();
 	// size_t pos = init_file.find_last_of("/");
-	// std::string filename = (pos == std::string::npos) ? init_file :
-	// init_file.substr(pos + 1); latencies.save_to_csv(output_file);
+	// std::string filename = (pos == std::string::npos) ? init_file : init_file.substr(pos + 1);
+	// latencies.save_to_csv(output_file);
 #endif
 	printf("\tMedian Load throughput: %f ,ops/us\n", findMedian(load_tpts));
 	printf("\tMedian Run throughput: %f ,ops/us\n", findMedian(run_tpts));
@@ -585,9 +534,31 @@ int main(int argc, char **argv) {
 	float scales[] = {0.5f, 1.0f, 2.0f};
 	int node_sizes[] = {256, 512, 1024, 2048, 4096, 8192, 16384};
 
-	ycsb_load_run_randint<2048, 0.5f>(load_file, index_file, num_thread,
-									  init_keys, keys, ranges_end, ranges, ops,
-									  output);
+	
+	
+	// ycsb_load_run_randint<512, 0.5f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	// ycsb_load_run_randint<512, 1.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	// ycsb_load_run_randint<512, 2.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+    
+	// ycsb_load_run_randint<1024, 0.5f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	// ycsb_load_run_randint<1024, 1.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	// ycsb_load_run_randint<1024, 2.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	
+	ycsb_load_run_randint<2048, 0.5f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	
+	return 0;
+	ycsb_load_run_randint<2048, 1.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	ycsb_load_run_randint<2048, 2.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	
+	ycsb_load_run_randint<4096, 0.5f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	ycsb_load_run_randint<4096, 1.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	ycsb_load_run_randint<4096, 2.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	
+	return 0;
+	
+	ycsb_load_run_randint<8192, 0.5f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	ycsb_load_run_randint<8192, 1.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
+	ycsb_load_run_randint<8192, 2.0f>(load_file, index_file, num_thread, init_keys, keys, ranges_end, ranges, ops, output);
 
 	return 0;
 }
