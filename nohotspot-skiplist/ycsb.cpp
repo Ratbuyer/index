@@ -334,7 +334,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		// barrier_t barrier;
 		// barrier_init(&barrier, num_thread + 1);
 		{
-
+			bg_stop();
 			auto starttime = get_usecs();
 
 #if LATENCY
@@ -375,29 +375,29 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 			bg_stop();
 			
-			printf("levels before rebalance: %d\n", set->head->level);
-			printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
+			// printf("levels before rebalance: %d\n", set->head->level);
+			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
 
-			struct sl_ptst *ptst;
-			struct sl_node *temp;
+			// struct sl_ptst *ptst;
+			// struct sl_node *temp;
 
-			ptst = ptst_critical_enter();
-			set->top = inode_new(NULL, NULL, set->head, ptst);
-			ptst_critical_exit(ptst);
-			set->head->level = 1;
-			temp = set->head->next;
-			while (temp) {
-				temp->level = 0;
-				temp = temp->next;
-			}
+			// ptst = ptst_critical_enter();
+			// set->top = inode_new(NULL, NULL, set->head, ptst);
+			// ptst_critical_exit(ptst);
+			// set->head->level = 1;
+			// temp = set->head->next;
+			// while (temp) {
+			// 	temp->level = 0;
+			// 	temp = temp->next;
+			// }
 
-			// wait till the list is balanced
-			bg_start(0);
-			while (set->head->level < floor_log_2(LOAD_SIZE)) {
-				AO_nop_full();
-			}
-			printf("levels after rebalance: %d\n", set->head->level);
-			bg_stop();
+			// // wait till the list is balanced
+			// bg_start(0);
+			// while (set->head->level < floor_log_2(LOAD_SIZE)) {
+			// 	AO_nop_full();
+			// }
+			// printf("levels after rebalance: %d\n", set->head->level);
+			// bg_stop();
 		}
 		{
 			// Run
