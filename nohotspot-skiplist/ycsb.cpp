@@ -327,7 +327,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		ptst_subsystem_init();
 		gc_subsystem_init();
 		set_subsystem_init();
-		set = set_new(1);
+		set = set_new(0);
 		
 		std::atomic<int> counter = 0;
 
@@ -373,7 +373,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			// printf("Throughput: load, %f ,ops/us and time %ld in us\n",
 			// (LOAD_SIZE * 1.0) / duration.count(), duration.count());
 
-			bg_stop();
+			// bg_stop();
 			
 			printf("levels before rebalance: %d\n", set->head->level);
 			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
