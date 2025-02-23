@@ -375,7 +375,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 			bg_stop();
 			
-			// printf("levels before rebalance: %d\n", set->head->level);
+			printf("levels before rebalance: %d\n", set->head->level);
 			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
 
 			// struct sl_ptst *ptst;
