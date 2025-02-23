@@ -352,7 +352,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				});
 #else
 			parallel_for(num_thread, 0, LOAD_SIZE, [&](const uint64_t &i) {
-				if (!sl_add_old(set, init_keys[i], 0)) {
+				if (sl_add_old(set, init_keys[i], 0) == -1) {
 					counter++;
 				}
 				// concurrent_map.insert({init_keys[i], init_keys[i]});
