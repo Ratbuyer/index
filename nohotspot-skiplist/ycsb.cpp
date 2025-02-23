@@ -328,6 +328,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		gc_subsystem_init();
 		set_subsystem_init();
 		set = set_new(0);
+		bg_start(1000000);
 		
 		std::atomic<int> counter = 0;
 
@@ -352,9 +353,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				});
 #else
 			parallel_for(num_thread, 0, LOAD_SIZE, [&](const uint64_t &i) {
-				if (sl_add_old(set, init_keys[i], 0) == -1) {
-					counter++;
-				}
+				sl_add_old(set, init_keys[i], 0);
 				// concurrent_map.insert({init_keys[i], init_keys[i]});
 			});
 #endif
@@ -374,6 +373,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			// (LOAD_SIZE * 1.0) / duration.count(), duration.count());
 
 			// bg_stop();
+			printf("Set size     : %d\n", set_size(set, 0));
 			
 			printf("levels before rebalance: %d\n", set->head->level);
 			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
@@ -499,7 +499,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 		bg_stop();
 		// int size = set_size(set, 1);
-		// printf("Set size     : %d\n", size);
+		// printf("Set size     : %d\n", set_size(set, 0));
 		printf("counter: %d\n", counter.load());
 		gc_subsystem_destroy();
 	}
