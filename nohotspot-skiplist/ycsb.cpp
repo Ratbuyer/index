@@ -340,7 +340,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 #if LATENCY
 			parallel_for(
-				num_thread, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
+				num_thread - 1, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
 					auto load_start = std::chrono::high_resolution_clock::now();
 					for (int j = 0; j < batch_size; j++) {
 						sl_add_old(set, init_keys[i], 0);
@@ -354,7 +354,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 							batch_size);
 				});
 #else
-			parallel_for(num_thread, 0, LOAD_SIZE, [&](const uint64_t &i) {
+			parallel_for(num_thread - 1, 0, LOAD_SIZE, [&](const uint64_t &i) {
 				sl_add_old(set, init_keys[i], 0);
 				// concurrent_map.insert({init_keys[i], init_keys[i]});
 			});
@@ -410,7 +410,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 #if LATENCY
 			parallel_for(
-				num_thread, 0, RUN_SIZE / batch_size, [&](const uint64_t &i) {
+				num_thread - 1, 0, RUN_SIZE / batch_size, [&](const uint64_t &i) {
 					// benchmark loops of 10
 					auto start = std::chrono::high_resolution_clock::now();
 
@@ -453,7 +453,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 
 #else
 
-			parallel_for(num_thread, 0, RUN_SIZE, [&](const uint64_t &i) {
+			parallel_for(num_thread - 1, 0, RUN_SIZE, [&](const uint64_t &i) {
 				if (ops[i] == OP_INSERT) {
 					// concurrent_map.insert({keys[i], keys[i]});
 					sl_add_old(set, keys[i], 0);
