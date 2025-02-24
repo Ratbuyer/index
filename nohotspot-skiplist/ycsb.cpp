@@ -321,6 +321,8 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 	ThreadSafeVector<uint64_t> load_latencies;
 	ThreadSafeVector<uint64_t> latencies;
 #endif
+	
+	constexpr int sleep_time_us = 10000000;
 
 	for (int k = 0; k < 6; k++) {
 
@@ -328,12 +330,12 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		gc_subsystem_init();
 		set_subsystem_init();
 		set = set_new(0);
-		bg_start(1000000);
+		
+		bg_start(sleep_time_us);
 		
 		std::atomic<int> counter = 0;
 
 		{
-			// bg_stop();
 			auto starttime = get_usecs();
 
 #if LATENCY
@@ -404,7 +406,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			auto starttime = std::chrono::system_clock::now();
 			// concurrent_map.clear_stats();
 			
-			bg_start(1000000);
+			// bg_start(sleep_time_us);
 
 #if LATENCY
 			parallel_for(
