@@ -322,7 +322,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 	ThreadSafeVector<uint64_t> latencies;
 #endif
 	
-	constexpr int sleep_time_us = 10000000;
+	constexpr int sleep_time_us = 100000;
 
 	for (int k = 0; k < 6; k++) {
 
@@ -371,11 +371,8 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			printf("\tLoad took %lu us, throughput = %f ops/us\n", duration,
 				   ((double)LOAD_SIZE) / duration);
 
-			// printf("Throughput: load, %f ,ops/us and time %ld in us\n",
-			// (LOAD_SIZE * 1.0) / duration.count(), duration.count());
-
 			// bg_stop();
-			printf("Set size     : %d\n", set_size(set, 0));
+			// printf("Set size     : %d\n", set_size(set, 0));
 			
 			printf("levels before rebalance: %d\n", set->head->level);
 			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
