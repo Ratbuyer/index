@@ -150,8 +150,8 @@ inline void clflush(char *data, int len, bool front, bool back) {
 }
 } // namespace Dummy
 
-static uint64_t LOAD_SIZE = 100000;
-static uint64_t RUN_SIZE = 100000;
+static uint64_t LOAD_SIZE = 100000000;
+static uint64_t RUN_SIZE = 100000000;
 
 struct ThreadArgs {
 	std::function<void(int, int)> func;
