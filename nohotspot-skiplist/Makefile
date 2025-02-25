@@ -31,10 +31,10 @@ test.o: intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test.o test.c -I$(INCLUDE_DIR)
 	
 ycsb.o: intset.h ycsb.cpp
-	$(CC) $(CFLAGS) -std=c++20 -c -IParallelTools/ -o $(BUILDIR)/ycsb.o ycsb.cpp -I$(INCLUDE_DIR)
+	$(CXX) $(CFLAGS) -std=c++20 -c -IParallelTools/ -o $(BUILDIR)/ycsb.o ycsb.cpp -I$(INCLUDE_DIR)
 	
 ycsb: intset.o background.o skiplist.o nohotspot_ops.o ycsb.o ptst.o garbagecoll.o
-	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/ycsb.o \
+	$(CXX) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/ycsb.o \
 	-o $(BINS)/ycsb $(LDFLAGS) \
 	-IParallelTools/ -std=c++20
 

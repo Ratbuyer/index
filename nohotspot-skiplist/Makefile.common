@@ -20,7 +20,7 @@ CC		= g++
 ifeq ($(VERSION),DEBUG)
      CFLAGS     += -g -DDEBUG -O0
 else
-     CFLAGS     += -O3 -DNDEBUG -std=c++11
+     CFLAGS     += -O3 -DNDEBUG -std=c++20
 endif
 
 # Parallelism
