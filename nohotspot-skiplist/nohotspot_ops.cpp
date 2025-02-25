@@ -188,8 +188,10 @@ static int sl_finish_scan(sl_key_t key, val_t val, node_t *node,
                           void *node_val, node_t *next, ptst_t *ptst) {
   // This is a hack - we pass the range as a pointer
   // which is of value type (void *)
+  int sum;
   int range = *(int *)val;
   while(range > 0 && next != nullptr) {
+  		sum += next->key;
         range--;
         // Interate forward by 1
         node = next;
@@ -197,7 +199,7 @@ static int sl_finish_scan(sl_key_t key, val_t val, node_t *node,
   }
 
   // Always return 1 to indicate success
-  return 1;
+  return sum;
 }
 
 /* - The public nohotspot_ops interface - */
