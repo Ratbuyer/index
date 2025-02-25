@@ -24,7 +24,7 @@
 #include "intset.h"
 #include "tools.h"
 
-#define LATENCY 0
+#define LATENCY 1
 
 using namespace std;
 
@@ -150,8 +150,8 @@ inline void clflush(char *data, int len, bool front, bool back) {
 }
 } // namespace Dummy
 
-static uint64_t LOAD_SIZE = 100000000;
-static uint64_t RUN_SIZE = 100000000;
+static uint64_t LOAD_SIZE = 100000;
+static uint64_t RUN_SIZE = 100000;
 
 struct ThreadArgs {
 	std::function<void(int, int)> func;
@@ -346,7 +346,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				num_thread - 1, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
 					auto load_start = std::chrono::high_resolution_clock::now();
 					for (int j = 0; j < batch_size; j++) {
-						while(sl_add_old(set, init_keys[i], 0) == -1);
+						while(sl_add_old(set, init_keys[i * batch_size + j], 0) == -1);
 					}
 					auto load_end = std::chrono::high_resolution_clock::now();
 					if (k == 3)
@@ -418,12 +418,12 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 						const int index = i * batch_size + j;
 
 						if (ops[index] == OP_INSERT) {
-							while(sl_add_old(set, init_keys[i], 0) == -1);
+							while(sl_add_old(set, keys[index], 0) == -1);
 						} else if (ops[index] == OP_READ) {
-							sl_contains_old(set, keys[i], 0);
+							sl_contains_old(set, keys[index], 0);
 						} else if (ops[index] == OP_SCAN) {
 							uint64_t sum = 0;
-							sl_scan_old(set, keys[i], ranges[i], 0);
+							sl_scan_old(set, keys[index], ranges[i], 0);
 						}
 
 						else if (ops[index] == OP_SCAN_END) {
@@ -455,7 +455,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			parallel_for(num_thread - 1, 0, RUN_SIZE, [&](const uint64_t &i) {
 				if (ops[i] == OP_INSERT) {
 					// concurrent_map.insert({keys[i], keys[i]});
-					while(sl_add_old(set, init_keys[i], 0) == -1);
+					while(sl_add_old(set, keys[i], 0) == -1);
 				} else if (ops[i] == OP_READ) {
 					// concurrent_map.value(keys[i]);
 					sl_contains_old(set, keys[i], 0);
