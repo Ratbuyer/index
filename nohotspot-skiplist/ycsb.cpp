@@ -22,6 +22,9 @@
 
 #include "background.h"
 #include "intset.h"
+#include "tools.h"
+
+#define LATENCY 0
 
 using namespace std;
 
@@ -147,8 +150,8 @@ inline void clflush(char *data, int len, bool front, bool back) {
 }
 } // namespace Dummy
 
-static uint64_t LOAD_SIZE = 100000000;
-static uint64_t RUN_SIZE = 100000000;
+static uint64_t LOAD_SIZE = 1000000;
+static uint64_t RUN_SIZE = 1000000;
 
 struct ThreadArgs {
 	std::function<void(int, int)> func;
@@ -331,7 +334,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		set_subsystem_init();
 		set = set_new(0);
 		
-		bg_start(sleep_time_us);
+		bg_start(100);
 		
 		std::atomic<int> counter = 0;
 
@@ -343,7 +346,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				num_thread - 1, 0, LOAD_SIZE / batch_size, [&](const uint64_t &i) {
 					auto load_start = std::chrono::high_resolution_clock::now();
 					for (int j = 0; j < batch_size; j++) {
-						sl_add_old(set, init_keys[i], 0);
+						while(sl_add_old(set, init_keys[i], 0) == -1);
 					}
 					auto load_end = std::chrono::high_resolution_clock::now();
 					if (k == 3)
@@ -355,8 +358,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 				});
 #else
 			parallel_for(num_thread - 1, 0, LOAD_SIZE, [&](const uint64_t &i) {
-				sl_add_old(set, init_keys[i], 0);
-				// concurrent_map.insert({init_keys[i], init_keys[i]});
+				while(sl_add_old(set, init_keys[i], 0) == -1);
 			});
 #endif
 
@@ -371,39 +373,39 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			printf("\tLoad took %lu us, throughput = %f ops/us\n", duration,
 				   ((double)LOAD_SIZE) / duration);
 
-			// bg_stop();
+			bg_stop();
 			// printf("Set size     : %d\n", set_size(set, 0));
+			// 
 			
 			printf("levels before rebalance: %d\n", set->head->level);
-			// printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
+			printf("larget level: %d\n", floor_log_2(LOAD_SIZE));
 
-			// struct sl_ptst *ptst;
-			// struct sl_node *temp;
+			struct sl_ptst *ptst;
+			struct sl_node *temp;
 
-			// ptst = ptst_critical_enter();
-			// set->top = inode_new(NULL, NULL, set->head, ptst);
-			// ptst_critical_exit(ptst);
-			// set->head->level = 1;
-			// temp = set->head->next;
-			// while (temp) {
-			// 	temp->level = 0;
-			// 	temp = temp->next;
-			// }
+			ptst = ptst_critical_enter();
+			set->top = inode_new(NULL, NULL, set->head, ptst);
+			ptst_critical_exit(ptst);
+			set->head->level = 1;
+			temp = set->head->next;
+			while (temp) {
+				temp->level = 0;
+				temp = temp->next;
+			}
 
-			// // wait till the list is balanced
-			// bg_start(0);
-			// while (set->head->level < floor_log_2(LOAD_SIZE)) {
-			// 	AO_nop_full();
-			// }
-			// printf("levels after rebalance: %d\n", set->head->level);
-			// bg_stop();
+			// wait till the list is balanced
+			bg_start(0);
+			while (set->head->level < floor_log_2(LOAD_SIZE)) {
+				AO_nop_full();
+			}
+			printf("levels after rebalance: %d\n", set->head->level);
+			bg_stop();
 		}
 		{
+			bg_start(sleep_time_us);
 			// Run
 			auto starttime = std::chrono::system_clock::now();
 			// concurrent_map.clear_stats();
-			
-			// bg_start(sleep_time_us);
 
 #if LATENCY
 			parallel_for(
@@ -416,7 +418,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 						const int index = i * batch_size + j;
 
 						if (ops[index] == OP_INSERT) {
-							sl_add_old(set, keys[i], 0);
+							while(sl_add_old(set, init_keys[i], 0) == -1);
 						} else if (ops[index] == OP_READ) {
 							sl_contains_old(set, keys[i], 0);
 						} else if (ops[index] == OP_SCAN) {
@@ -425,13 +427,13 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 						}
 
 						else if (ops[index] == OP_SCAN_END) {
-							uint64_t sum = 0;
-							concurrent_map.map_range(
-								keys[index], range_end[index],
-								[&sum](auto key1, auto value) {
-									key1 += value;
-									sum += value;
-								});
+							// uint64_t sum = 0;
+							// concurrent_map.map_range(
+							// 	keys[index], range_end[index],
+							// 	[&sum](auto key1, auto value) {
+							// 		key1 += value;
+							// 		sum += value;
+							// 	});
 						} else if (ops[index] == OP_UPDATE) {
 							std::cout << "NOT SUPPORTED CMD!\n";
 							exit(0);
@@ -453,7 +455,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 			parallel_for(num_thread - 1, 0, RUN_SIZE, [&](const uint64_t &i) {
 				if (ops[i] == OP_INSERT) {
 					// concurrent_map.insert({keys[i], keys[i]});
-					sl_add_old(set, keys[i], 0);
+					while(sl_add_old(set, init_keys[i], 0) == -1);
 				} else if (ops[i] == OP_READ) {
 					// concurrent_map.value(keys[i]);
 					sl_contains_old(set, keys[i], 0);
@@ -499,7 +501,7 @@ void ycsb_load_run_randint(std::string init_file, std::string txn_file,
 		bg_stop();
 		// int size = set_size(set, 1);
 		// printf("Set size     : %d\n", set_size(set, 0));
-		printf("counter: %d\n", counter.load());
+		// printf("counter: %d\n", counter.load());
 		gc_subsystem_destroy();
 	}
 #if LATENCY
